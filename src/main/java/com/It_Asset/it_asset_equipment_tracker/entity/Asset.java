@@ -1,6 +1,7 @@
 
 package com.It_Asset.it_asset_equipment_tracker.entity;
 
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import jakarta.persistence.*;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.PositiveOrZero;
@@ -32,11 +33,13 @@ public class Asset {
     @Column(unique = true, nullable = false)
     private String serialNumber;
 
-    // Preserve existing assigned names in the database
+    // Preserve the assigned user's name in the database.
     @Column(name = "assigned_to")
     private String assignedToName;
 
-    // Relationship to a real user
+    // Keep the relationship for Java services,
+    // but do not serialize the lazy User object into JSON.
+    @JsonIgnore
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "assigned_user_id")
     private User assignedTo;
@@ -114,6 +117,7 @@ public class Asset {
         this.assignedToName = assignedToName;
     }
 
+    @JsonIgnore
     public User getAssignedTo() {
         return assignedTo;
     }

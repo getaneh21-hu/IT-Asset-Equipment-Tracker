@@ -128,6 +128,32 @@ public class AssetService {
         return assetRepository.save(asset);
     }
 
+    // Update the status of an asset
+    @Transactional
+    public Asset updateAssetStatus(Long assetId, AssetStatus newStatus) {
+
+        Asset asset = getAssetById(assetId);
+
+        if (newStatus == null) {
+            throw new BadRequestException("Asset status is required");
+        }
+
+        if (newStatus == AssetStatus.ASSIGNED) {
+            throw new BadRequestException(
+                    "Use the assign endpoint to assign an asset");
+        }
+
+        if (asset.getStatus() == AssetStatus.ASSIGNED) {
+            throw new BadRequestException(
+                    "An assigned asset cannot change status. "
+                            + "Unassign it first.");
+        }
+
+        asset.setStatus(newStatus);
+
+        return assetRepository.save(asset);
+    }
+
     // Delete an asset
     @Transactional
     public void deleteAsset(Long id) {

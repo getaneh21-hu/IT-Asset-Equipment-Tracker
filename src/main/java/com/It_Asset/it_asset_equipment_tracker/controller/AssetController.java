@@ -2,6 +2,7 @@
 package com.It_Asset.it_asset_equipment_tracker.controller;
 
 import com.It_Asset.it_asset_equipment_tracker.dto.AssetAssignmentRequest;
+import com.It_Asset.it_asset_equipment_tracker.dto.AssetStatusUpdateRequest;
 import com.It_Asset.it_asset_equipment_tracker.entity.Asset;
 import com.It_Asset.it_asset_equipment_tracker.service.AssetService;
 
@@ -55,6 +56,16 @@ public class AssetController {
             @PathVariable Long id,
             @Valid @RequestBody AssetAssignmentRequest request) {
         return assetService.assignAsset(id, request.getUserId());
+    }
+
+    // Update an asset's status
+    @PatchMapping("/{id}/status")
+    public Asset updateAssetStatus(
+            @PathVariable Long id,
+            @Valid @RequestBody AssetStatusUpdateRequest request) {
+        return assetService.updateAssetStatus(
+                id,
+                request.getStatus());
     }
 
     // Delete an asset

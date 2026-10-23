@@ -33,18 +33,22 @@ public class Asset {
     @Column(unique = true, nullable = false)
     private String serialNumber;
 
-    // Preserve the assigned user's name in the database.
+    // Assigned user's name
     @Column(name = "assigned_to")
     private String assignedToName;
 
-    // Keep the relationship for Java services,
-    // but do not serialize the lazy User object into JSON.
+    // Assigned user relationship
     @JsonIgnore
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "assigned_user_id")
     private User assignedTo;
 
     private String department;
+
+    // Category relationship: many assets can belong to one category
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "category_id")
+    private Category category;
 
     @Enumerated(EnumType.STRING)
     @Column(nullable = false)
@@ -132,6 +136,14 @@ public class Asset {
 
     public void setDepartment(String department) {
         this.department = department;
+    }
+
+    public Category getCategory() {
+        return category;
+    }
+
+    public void setCategory(Category category) {
+        this.category = category;
     }
 
     public AssetStatus getStatus() {

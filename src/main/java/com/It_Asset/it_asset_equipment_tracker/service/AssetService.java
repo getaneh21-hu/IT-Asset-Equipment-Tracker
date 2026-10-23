@@ -5,10 +5,12 @@ import com.It_Asset.it_asset_equipment_tracker.dto.AssetRequest;
 import com.It_Asset.it_asset_equipment_tracker.dto.AssetResponse;
 import com.It_Asset.it_asset_equipment_tracker.entity.Asset;
 import com.It_Asset.it_asset_equipment_tracker.entity.AssetStatus;
+import com.It_Asset.it_asset_equipment_tracker.entity.Category;
 import com.It_Asset.it_asset_equipment_tracker.entity.User;
 import com.It_Asset.it_asset_equipment_tracker.exception.BadRequestException;
 import com.It_Asset.it_asset_equipment_tracker.exception.ResourceNotFoundException;
 import com.It_Asset.it_asset_equipment_tracker.repository.AssetRepository;
+import com.It_Asset.it_asset_equipment_tracker.repository.CategoryRepository;
 import com.It_Asset.it_asset_equipment_tracker.repository.UserRepository;
 
 import org.springframework.stereotype.Service;
@@ -22,12 +24,15 @@ public class AssetService {
 
     private final AssetRepository assetRepository;
     private final UserRepository userRepository;
+    private final CategoryRepository categoryRepository;
 
     public AssetService(
             AssetRepository assetRepository,
-            UserRepository userRepository) {
+            UserRepository userRepository,
+            CategoryRepository categoryRepository) {
         this.assetRepository = assetRepository;
         this.userRepository = userRepository;
+        this.categoryRepository = categoryRepository;
     }
 
     // Convert an Asset entity into a response DTO.
@@ -42,6 +47,12 @@ public class AssetService {
         response.setSerialNumber(asset.getSerialNumber());
         response.setAssignedToName(asset.getAssignedToName());
         response.setDepartment(asset.getDepartment());
+
+        if (asset.getCategory() != null) {
+            response.setCategoryId(asset.getCategory().getId());
+            response.setCategoryName(asset.getCategory().getName());
+        }
+
         response.setStatus(asset.getStatus());
         response.setPurchaseCost(asset.getPurchaseCost());
         response.setPurchaseDate(asset.getPurchaseDate());
@@ -67,6 +78,17 @@ public class AssetService {
         return asset;
     }
 
+    // Find and validate the selected category.
+    private Category getCategory(Long categoryId) {
+        if (categoryId == null) {
+            return null;
+        }
+
+        return categoryRepository.findById(categoryId)
+                .orElseThrow(() -> new ResourceNotFoundException(
+                        "Category not found with ID: " + categoryId));
+    }
+
     // Validate purchase and warranty dates.
     private void validateAssetDates(Asset asset) {
         LocalDate purchaseDate = asset.getPurchaseDate();
@@ -80,40 +102,53 @@ public class AssetService {
         }
     }
 
-    // Create a new asset.
-    @Transactional
-    public AssetResponse createAsset(AssetRequest request) {
-        Asset asset = toEntity(request);
-
-        if (asset.getName() == null || asset.getName().isBlank()) {
+    // Validate required asset fields.
+    private void validateRequiredFields(AssetRequest request) {
+        if (request.getName() == null || request.getName().isBlank()) {
             throw new BadRequestException("Asset name is required");
         }
 
-        if (asset.getType() == null || asset.getType().isBlank()) {
+        if (request.getType() == null || request.getType().isBlank()) {
             throw new BadRequestException("Asset type is required");
         }
 
-        if (asset.getSerialNumber() == null
-                || asset.getSerialNumber().isBlank()) {
+        if (request.getSerialNumber() == null
+                || request.getSerialNumber().isBlank()) {
             throw new BadRequestException("Serial number is required");
         }
+    }
 
+    // Create a new asset.
+    @Transactional
+    public AssetResponse createAsset(AssetRequest request) {
+        validateRequiredFields(request);
+
+        Asset asset = toEntity(request);
         validateAssetDates(asset);
 
-        if (assetRepository.existsBySerialNumber(
-                asset.getSerialNumber())) {
+        // Assign the requested category, if provided.
+        asset.setCategory(getCategory(request.getCategoryId()));
+
+        if (assetRepository.existsBySerialNumber(asset.getSerialNumber())) {
             throw new BadRequestException(
                     "Serial number already exists: "
                             + asset.getSerialNumber());
         }
 
-        // New assets must start as AVAILABLE and unassigned.
-        asset.setStatus(AssetStatus.AVAILABLE);
+        asset.setStatus(
+                request.getStatus() == null
+                        ? AssetStatus.AVAILABLE
+                        : request.getStatus());
+
+        if (asset.getStatus() == AssetStatus.ASSIGNED) {
+            throw new BadRequestException(
+                    "Use the assign endpoint to assign an asset to a user");
+        }
+
         asset.setAssignedTo(null);
         asset.setAssignedToName(null);
 
-        Asset savedAsset = assetRepository.save(asset);
-        return toResponse(savedAsset);
+        return toResponse(assetRepository.save(asset));
     }
 
     // Get all assets.
@@ -121,6 +156,35 @@ public class AssetService {
     public List<AssetResponse> getAllAssets() {
         return assetRepository.findAll()
                 .stream()
+                .map(this::toResponse)
+                .toList();
+    }
+
+    // Get assets filtered by status.
+    @Transactional(readOnly = true)
+    public List<AssetResponse> getAssetsByStatus(AssetStatus status) {
+        if (status == null) {
+            return getAllAssets();
+        }
+
+        return assetRepository.findAll()
+                .stream()
+                .filter(asset -> asset.getStatus() == status)
+                .map(this::toResponse)
+                .toList();
+    }
+
+    // Get assets assigned to a particular user.
+    @Transactional(readOnly = true)
+    public List<AssetResponse> getMyAssets(String username) {
+        User user = userRepository.findByUsername(username)
+                .orElseThrow(() -> new ResourceNotFoundException(
+                        "User not found: " + username));
+
+        return assetRepository.findAll()
+                .stream()
+                .filter(asset -> asset.getAssignedTo() != null
+                        && asset.getAssignedTo().getId().equals(user.getId()))
                 .map(this::toResponse)
                 .toList();
     }
@@ -135,33 +199,19 @@ public class AssetService {
         return toResponse(asset);
     }
 
-    // Update an existing asset.
+    // Update an existing asset without changing its assignment or status.
     @Transactional
     public AssetResponse updateAsset(Long id, AssetRequest request) {
+        validateRequiredFields(request);
+
         Asset existingAsset = assetRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException(
                         "Asset not found with ID: " + id));
 
-        if (request.getName() == null
-                || request.getName().isBlank()) {
-            throw new BadRequestException("Asset name is required");
-        }
-
-        if (request.getType() == null
-                || request.getType().isBlank()) {
-            throw new BadRequestException("Asset type is required");
-        }
-
-        if (request.getSerialNumber() == null
-                || request.getSerialNumber().isBlank()) {
-            throw new BadRequestException("Serial number is required");
-        }
-
         Asset candidate = toEntity(request);
         validateAssetDates(candidate);
 
-        if (!existingAsset.getSerialNumber()
-                .equals(request.getSerialNumber())
+        if (!existingAsset.getSerialNumber().equals(request.getSerialNumber())
                 && assetRepository.existsBySerialNumber(
                         request.getSerialNumber())) {
             throw new BadRequestException(
@@ -177,12 +227,14 @@ public class AssetService {
         existingAsset.setDepartment(request.getDepartment());
         existingAsset.setPurchaseCost(request.getPurchaseCost());
         existingAsset.setPurchaseDate(request.getPurchaseDate());
-        existingAsset.setWarrantyExpiryDate(
-                request.getWarrantyExpiryDate());
+        existingAsset.setWarrantyExpiryDate(request.getWarrantyExpiryDate());
 
-        // Keep assignment and status under separate endpoints.
-        Asset savedAsset = assetRepository.save(existingAsset);
-        return toResponse(savedAsset);
+        // Update category only when a category ID is supplied.
+        if (request.getCategoryId() != null) {
+            existingAsset.setCategory(getCategory(request.getCategoryId()));
+        }
+
+        return toResponse(assetRepository.save(existingAsset));
     }
 
     // Assign an available asset to an existing user.
@@ -205,8 +257,26 @@ public class AssetService {
         asset.setAssignedToName(user.getUsername());
         asset.setStatus(AssetStatus.ASSIGNED);
 
-        Asset savedAsset = assetRepository.save(asset);
-        return toResponse(savedAsset);
+        return toResponse(assetRepository.save(asset));
+    }
+
+    // Return an assigned asset.
+    @Transactional
+    public AssetResponse returnAsset(Long assetId) {
+        Asset asset = assetRepository.findById(assetId)
+                .orElseThrow(() -> new ResourceNotFoundException(
+                        "Asset not found with ID: " + assetId));
+
+        if (asset.getStatus() != AssetStatus.ASSIGNED) {
+            throw new BadRequestException(
+                    "Only an assigned asset can be returned");
+        }
+
+        asset.setAssignedTo(null);
+        asset.setAssignedToName(null);
+        asset.setStatus(AssetStatus.AVAILABLE);
+
+        return toResponse(assetRepository.save(asset));
     }
 
     // Update an asset's status.
@@ -229,14 +299,14 @@ public class AssetService {
 
         if (asset.getStatus() == AssetStatus.ASSIGNED) {
             throw new BadRequestException(
-                    "An assigned asset cannot change status. "
-                            + "Unassign it first.");
+                    "An assigned asset cannot change status. Unassign it first.");
         }
 
         asset.setStatus(newStatus);
+        asset.setAssignedTo(null);
+        asset.setAssignedToName(null);
 
-        Asset savedAsset = assetRepository.save(asset);
-        return toResponse(savedAsset);
+        return toResponse(assetRepository.save(asset));
     }
 
     // Delete an asset.

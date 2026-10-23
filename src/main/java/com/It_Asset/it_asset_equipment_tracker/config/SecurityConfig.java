@@ -11,6 +11,7 @@ import org.springframework.http.MediaType;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.dao.DaoAuthenticationProvider;
 import org.springframework.security.config.annotation.authentication.configuration.AuthenticationConfiguration;
+import org.springframework.security.config.annotation.method.configuration.EnableMethodSecurity;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
 import org.springframework.security.config.http.SessionCreationPolicy;
@@ -25,6 +26,7 @@ import java.util.Map;
 
 @Configuration
 @EnableWebSecurity
+@EnableMethodSecurity
 public class SecurityConfig {
 
     private final JwtAuthenticationFilter jwtAuthenticationFilter;
@@ -72,7 +74,7 @@ public class SecurityConfig {
 
             .exceptionHandling(exceptions -> exceptions
 
-                // No valid authentication: return JSON with HTTP 401
+                // Unauthenticated requests receive HTTP 401.
                 .authenticationEntryPoint((request, response, exception) -> {
                     response.setStatus(
                         HttpServletResponse.SC_UNAUTHORIZED);
@@ -90,7 +92,7 @@ public class SecurityConfig {
                         response.getOutputStream(), body);
                 })
 
-                // Authenticated but insufficient permissions: return JSON with HTTP 403
+                // Authenticated requests without permission receive HTTP 403.
                 .accessDeniedHandler((request, response, exception) -> {
                     response.setStatus(
                         HttpServletResponse.SC_FORBIDDEN);
@@ -119,24 +121,25 @@ public class SecurityConfig {
                     "/v3/api-docs/**"
                 ).permitAll()
 
-                .requestMatchers(HttpMethod.GET, "/api/categories/**")
+                // Category endpoints.
+                .requestMatchers(HttpMethod.GET, "/api/categories")
                     .hasAnyRole("ADMIN", "STAFF")
-
-                .requestMatchers(HttpMethod.POST, "/api/categories/**")
+                .requestMatchers(HttpMethod.POST, "/api/categories")
+                    .hasRole("ADMIN")
+                .requestMatchers(HttpMethod.PUT, "/api/categories/**")
+                    .hasRole("ADMIN")
+                .requestMatchers(HttpMethod.DELETE, "/api/categories/**")
                     .hasRole("ADMIN")
 
+                // Asset endpoints.
                 .requestMatchers(HttpMethod.GET, "/api/assets/**")
                     .hasAnyRole("ADMIN", "STAFF")
-
-                .requestMatchers(HttpMethod.POST, "/api/assets/**")
+                .requestMatchers(HttpMethod.POST, "/api/assets")
                     .hasRole("ADMIN")
-
                 .requestMatchers(HttpMethod.PUT, "/api/assets/**")
                     .hasRole("ADMIN")
-
                 .requestMatchers(HttpMethod.PATCH, "/api/assets/**")
                     .hasRole("ADMIN")
-
                 .requestMatchers(HttpMethod.DELETE, "/api/assets/**")
                     .hasRole("ADMIN")
 

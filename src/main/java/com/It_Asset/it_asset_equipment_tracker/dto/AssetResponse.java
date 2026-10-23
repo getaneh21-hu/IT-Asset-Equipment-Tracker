@@ -16,6 +16,11 @@ public class AssetResponse {
     private String serialNumber;
     private String assignedToName;
     private String department;
+
+    // Category information
+    private Long categoryId;
+    private String categoryName;
+
     private AssetStatus status;
     private BigDecimal purchaseCost;
     private LocalDate purchaseDate;
@@ -86,6 +91,22 @@ public class AssetResponse {
 
     public void setDepartment(String department) {
         this.department = department;
+    }
+
+    public Long getCategoryId() {
+        return categoryId;
+    }
+
+    public void setCategoryId(Long categoryId) {
+        this.categoryId = categoryId;
+    }
+
+    public String getCategoryName() {
+        return categoryName;
+    }
+
+    public void setCategoryName(String categoryName) {
+        this.categoryName = categoryName;
     }
 
     public AssetStatus getStatus() {

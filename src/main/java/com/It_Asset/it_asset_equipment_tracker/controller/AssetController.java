@@ -61,7 +61,7 @@ public class AssetController {
     }
 
     // Assign an asset to a user.
-    @PatchMapping("/{id}/assign/{userId}")
+    @PostMapping("/{id}/assign/{userId}")
     public AssetResponse assignAsset(
             @PathVariable Long id,
             @PathVariable Long userId) {
@@ -69,7 +69,7 @@ public class AssetController {
     }
 
     // Return an assigned asset.
-    @PatchMapping("/{id}/return")
+    @GetMapping("/{id}/return")
     public AssetResponse returnAsset(@PathVariable Long id) {
         return assetService.returnAsset(id);
     }

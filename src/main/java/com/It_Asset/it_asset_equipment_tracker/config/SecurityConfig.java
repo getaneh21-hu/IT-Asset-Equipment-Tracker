@@ -67,14 +67,15 @@ public class SecurityConfig {
             .httpBasic(basic -> basic.disable())
             .formLogin(form -> form.disable())
 
+            // Use stateless JWT authentication.
             .sessionManagement(session -> session
                 .sessionCreationPolicy(SessionCreationPolicy.STATELESS))
 
             .authenticationProvider(authenticationProvider)
 
+            // Return consistent JSON responses for 401 and 403.
             .exceptionHandling(exceptions -> exceptions
 
-                // Unauthenticated requests receive HTTP 401.
                 .authenticationEntryPoint((request, response, exception) -> {
                     response.setStatus(
                         HttpServletResponse.SC_UNAUTHORIZED);
@@ -92,7 +93,6 @@ public class SecurityConfig {
                         response.getOutputStream(), body);
                 })
 
-                // Authenticated requests without permission receive HTTP 403.
                 .accessDeniedHandler((request, response, exception) -> {
                     response.setStatus(
                         HttpServletResponse.SC_FORBIDDEN);
@@ -112,6 +112,8 @@ public class SecurityConfig {
             )
 
             .authorizeHttpRequests(auth -> auth
+
+                // Public endpoints.
                 .requestMatchers(
                     "/",
                     "/api/health",
@@ -124,25 +126,56 @@ public class SecurityConfig {
                 // Category endpoints.
                 .requestMatchers(HttpMethod.GET, "/api/categories")
                     .hasAnyRole("ADMIN", "STAFF")
+
                 .requestMatchers(HttpMethod.POST, "/api/categories")
                     .hasRole("ADMIN")
+
                 .requestMatchers(HttpMethod.PUT, "/api/categories/**")
                     .hasRole("ADMIN")
+
                 .requestMatchers(HttpMethod.DELETE, "/api/categories/**")
                     .hasRole("ADMIN")
 
                 // Asset endpoints.
-                .requestMatchers(HttpMethod.GET, "/api/assets/**")
+
+                // ADMIN and STAFF can view their own assigned assets.
+                .requestMatchers(HttpMethod.GET, "/api/assets/my-assets")
                     .hasAnyRole("ADMIN", "STAFF")
+
+                // Returning an asset changes its status: ADMIN only.
+                .requestMatchers(HttpMethod.GET, "/api/assets/*/return")
+                    .hasRole("ADMIN")
+
+                // ADMIN and STAFF can list assets and view an asset by ID.
+                .requestMatchers(
+                    HttpMethod.GET,
+                    "/api/assets",
+                    "/api/assets/*"
+                ).hasAnyRole("ADMIN", "STAFF")
+
+                // Assigning an asset: ADMIN only.
+                .requestMatchers(
+                    HttpMethod.POST,
+                    "/api/assets/*/assign/*"
+                ).hasRole("ADMIN")
+
+                // Creating an asset: ADMIN only.
                 .requestMatchers(HttpMethod.POST, "/api/assets")
                     .hasRole("ADMIN")
+
+                // Updating an asset: ADMIN only.
                 .requestMatchers(HttpMethod.PUT, "/api/assets/**")
                     .hasRole("ADMIN")
+
+                // Changing asset status: ADMIN only.
                 .requestMatchers(HttpMethod.PATCH, "/api/assets/**")
                     .hasRole("ADMIN")
+
+                // Deleting an asset: ADMIN only.
                 .requestMatchers(HttpMethod.DELETE, "/api/assets/**")
                     .hasRole("ADMIN")
 
+                // Require authentication for anything not listed above.
                 .anyRequest().authenticated()
             )
 

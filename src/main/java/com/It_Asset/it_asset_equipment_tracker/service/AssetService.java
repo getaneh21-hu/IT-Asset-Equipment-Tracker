@@ -126,7 +126,6 @@ public class AssetService {
         Asset asset = toEntity(request);
         validateAssetDates(asset);
 
-        // Assign the requested category, if provided.
         asset.setCategory(getCategory(request.getCategoryId()));
 
         if (assetRepository.existsBySerialNumber(asset.getSerialNumber())) {
@@ -160,16 +159,15 @@ public class AssetService {
                 .toList();
     }
 
-    // Get assets filtered by status.
+    // Get assets filtered by status using a database query.
     @Transactional(readOnly = true)
     public List<AssetResponse> getAssetsByStatus(AssetStatus status) {
         if (status == null) {
             return getAllAssets();
         }
 
-        return assetRepository.findAll()
+        return assetRepository.findByStatus(status)
                 .stream()
-                .filter(asset -> asset.getStatus() == status)
                 .map(this::toResponse)
                 .toList();
     }

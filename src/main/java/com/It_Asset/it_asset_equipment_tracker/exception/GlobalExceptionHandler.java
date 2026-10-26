@@ -8,6 +8,7 @@ import org.slf4j.LoggerFactory;
 
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.http.HttpStatus;
+import org.springframework.http.HttpStatusCode;
 import org.springframework.http.ResponseEntity;
 import org.springframework.http.converter.HttpMessageNotReadableException;
 
@@ -32,7 +33,7 @@ public class GlobalExceptionHandler {
 
     // Create a consistent JSON error response
     private Map<String, Object> createErrorResponse(
-            HttpStatus status,
+            HttpStatusCode status,
             String message,
             String path) {
 
@@ -40,27 +41,29 @@ public class GlobalExceptionHandler {
 
         error.put("timestamp", LocalDateTime.now());
         error.put("status", status.value());
-        error.put("error", status.getReasonPhrase());
+        error.put("error", status.toString());
         error.put("message", message);
         error.put("path", path);
 
         return error;
     }
 
-    // Handle resources that cannot be found
+    // Handle resources that cannot be found (404)
     @ExceptionHandler(ResourceNotFoundException.class)
     public ResponseEntity<Map<String, Object>> handleNotFound(
             ResourceNotFoundException ex,
             HttpServletRequest request) {
 
-        return ResponseEntity.status(HttpStatus.NOT_FOUND)
+        HttpStatus status = HttpStatus.NOT_FOUND;
+
+        return ResponseEntity.status(status)
                 .body(createErrorResponse(
-                        HttpStatus.NOT_FOUND,
+                        status,
                         ex.getMessage(),
                         request.getRequestURI()));
     }
 
-    // Handle validation errors
+    // Handle validation errors (400)
     @ExceptionHandler(MethodArgumentNotValidException.class)
     public ResponseEntity<Map<String, Object>> handleValidation(
             MethodArgumentNotValidException ex,
@@ -75,27 +78,31 @@ public class GlobalExceptionHandler {
                 .findFirst()
                 .orElse("Request validation failed");
 
-        return ResponseEntity.badRequest()
+        HttpStatus status = HttpStatus.BAD_REQUEST;
+
+        return ResponseEntity.status(status)
                 .body(createErrorResponse(
-                        HttpStatus.BAD_REQUEST,
+                        status,
                         message,
                         request.getRequestURI()));
     }
 
-    // Handle invalid JSON, request bodies, or enum values
+    // Handle invalid JSON, request bodies, or enum values (400)
     @ExceptionHandler(HttpMessageNotReadableException.class)
     public ResponseEntity<Map<String, Object>> handleInvalidRequest(
             HttpMessageNotReadableException ex,
             HttpServletRequest request) {
 
-        return ResponseEntity.badRequest()
+        HttpStatus status = HttpStatus.BAD_REQUEST;
+
+        return ResponseEntity.status(status)
                 .body(createErrorResponse(
-                        HttpStatus.BAD_REQUEST,
+                        status,
                         "Invalid request body or enum value",
                         request.getRequestURI()));
     }
 
-    // Handle illegal argument errors
+    // Handle illegal argument errors (400)
     @ExceptionHandler(IllegalArgumentException.class)
     public ResponseEntity<Map<String, Object>> handleIllegalArgument(
             IllegalArgumentException ex,
@@ -105,22 +112,26 @@ public class GlobalExceptionHandler {
                 ? ex.getMessage()
                 : "Invalid request value";
 
-        return ResponseEntity.badRequest()
+        HttpStatus status = HttpStatus.BAD_REQUEST;
+
+        return ResponseEntity.status(status)
                 .body(createErrorResponse(
-                        HttpStatus.BAD_REQUEST,
+                        status,
                         message,
                         request.getRequestURI()));
     }
 
-    // Handle application-specific bad requests
+    // Handle application-specific bad requests (400)
     @ExceptionHandler(BadRequestException.class)
     public ResponseEntity<Map<String, Object>> handleBadRequest(
             BadRequestException ex,
             HttpServletRequest request) {
 
-        return ResponseEntity.badRequest()
+        HttpStatus status = HttpStatus.BAD_REQUEST;
+
+        return ResponseEntity.status(status)
                 .body(createErrorResponse(
-                        HttpStatus.BAD_REQUEST,
+                        status,
                         ex.getMessage(),
                         request.getRequestURI()));
     }
@@ -131,12 +142,11 @@ public class GlobalExceptionHandler {
             ResponseStatusException ex,
             HttpServletRequest request) {
 
-        HttpStatus status = HttpStatus.valueOf(
-                ex.getStatusCode().value());
+        HttpStatusCode status = ex.getStatusCode();
 
         String message = ex.getReason() != null
                 ? ex.getReason()
-                : status.getReasonPhrase();
+                : "Request failed";
 
         return ResponseEntity.status(status)
                 .body(createErrorResponse(
@@ -145,7 +155,7 @@ public class GlobalExceptionHandler {
                         request.getRequestURI()));
     }
 
-    // Handle database constraint violations
+    // Handle database constraint violations (409)
     @ExceptionHandler(DataIntegrityViolationException.class)
     public ResponseEntity<Map<String, Object>> handleDataIntegrityViolation(
             DataIntegrityViolationException ex,
@@ -156,14 +166,16 @@ public class GlobalExceptionHandler {
                 request.getMethod(),
                 request.getRequestURI());
 
-        return ResponseEntity.status(HttpStatus.CONFLICT)
+        HttpStatus status = HttpStatus.CONFLICT;
+
+        return ResponseEntity.status(status)
                 .body(createErrorResponse(
-                        HttpStatus.CONFLICT,
+                        status,
                         "The request conflicts with existing database data",
                         request.getRequestURI()));
     }
 
-    // Handle transaction failures caused by persistence validation
+    // Handle transaction failures caused by persistence validation (400)
     @ExceptionHandler(TransactionSystemException.class)
     public ResponseEntity<Map<String, Object>> handleTransactionFailure(
             TransactionSystemException ex,
@@ -175,27 +187,31 @@ public class GlobalExceptionHandler {
                 request.getRequestURI(),
                 ex);
 
-        return ResponseEntity.badRequest()
+        HttpStatus status = HttpStatus.BAD_REQUEST;
+
+        return ResponseEntity.status(status)
                 .body(createErrorResponse(
-                        HttpStatus.BAD_REQUEST,
+                        status,
                         "The request could not be saved. Check the submitted data.",
                         request.getRequestURI()));
     }
 
-    // Handle failed authentication
+    // Handle failed authentication (401)
     @ExceptionHandler(AuthenticationException.class)
     public ResponseEntity<Map<String, Object>> handleAuthenticationError(
             AuthenticationException ex,
             HttpServletRequest request) {
 
-        return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
+        HttpStatus status = HttpStatus.UNAUTHORIZED;
+
+        return ResponseEntity.status(status)
                 .body(createErrorResponse(
-                        HttpStatus.UNAUTHORIZED,
+                        status,
                         "Invalid username or password",
                         request.getRequestURI()));
     }
 
-    // Log unexpected errors and return a safe response
+    // Log unexpected errors and return a safe response (500)
     @ExceptionHandler(Exception.class)
     public ResponseEntity<Map<String, Object>> handleGeneralError(
             Exception ex,
@@ -207,10 +223,11 @@ public class GlobalExceptionHandler {
                 request.getRequestURI(),
                 ex);
 
-        return ResponseEntity.status(
-                        HttpStatus.INTERNAL_SERVER_ERROR)
+        HttpStatus status = HttpStatus.INTERNAL_SERVER_ERROR;
+
+        return ResponseEntity.status(status)
                 .body(createErrorResponse(
-                        HttpStatus.INTERNAL_SERVER_ERROR,
+                        status,
                         "An unexpected server error occurred",
                         request.getRequestURI()));
     }

@@ -8,6 +8,7 @@ import jakarta.validation.constraints.PositiveOrZero;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
+import java.time.LocalDateTime;
 
 @Entity
 @Table(name = "assets")
@@ -33,20 +34,21 @@ public class Asset {
     @Column(unique = true, nullable = false)
     private String serialNumber;
 
-    // Assigned user's name
+    // Assigned user's name for display purposes
     @Column(name = "assigned_to")
     private String assignedToName;
 
-    // Assigned user relationship
+    // Many assets may be assigned to one user.
+    // Nullable when the asset is not assigned.
     @JsonIgnore
-    @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "assigned_user_id")
+    @ManyToOne(fetch = FetchType.LAZY, optional = true)
+    @JoinColumn(name = "assigned_user_id", nullable = true)
     private User assignedTo;
 
     private String department;
 
-    // Category relationship: many assets can belong to one category
-    @ManyToOne(fetch = FetchType.LAZY)
+    // Many assets can belong to one category.
+    @ManyToOne(fetch = FetchType.LAZY, optional = true)
     @JoinColumn(name = "category_id")
     private Category category;
 
@@ -62,7 +64,19 @@ public class Asset {
 
     private LocalDate warrantyExpiryDate;
 
+    // Date and time when the asset was first created.
+    @Column(nullable = false, updatable = false)
+    private LocalDateTime createdAt;
+
     public Asset() {
+    }
+
+    // Automatically set createdAt before the first database insert.
+    @PrePersist
+    protected void onCreate() {
+        if (createdAt == null) {
+            createdAt = LocalDateTime.now();
+        }
     }
 
     public Long getId() {
@@ -176,5 +190,13 @@ public class Asset {
 
     public void setWarrantyExpiryDate(LocalDate warrantyExpiryDate) {
         this.warrantyExpiryDate = warrantyExpiryDate;
+    }
+
+    public LocalDateTime getCreatedAt() {
+        return createdAt;
+    }
+
+    public void setCreatedAt(LocalDateTime createdAt) {
+        this.createdAt = createdAt;
     }
 }

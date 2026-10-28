@@ -5,6 +5,7 @@ import com.It_Asset.it_asset_equipment_tracker.entity.AssetStatus;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
+import java.time.LocalDateTime;
 
 public class AssetResponse {
 
@@ -25,6 +26,9 @@ public class AssetResponse {
     private BigDecimal purchaseCost;
     private LocalDate purchaseDate;
     private LocalDate warrantyExpiryDate;
+
+    // Date and time the asset was created
+    private LocalDateTime createdAt;
 
     public AssetResponse() {
     }
@@ -139,5 +143,13 @@ public class AssetResponse {
 
     public void setWarrantyExpiryDate(LocalDate warrantyExpiryDate) {
         this.warrantyExpiryDate = warrantyExpiryDate;
+    }
+
+    public LocalDateTime getCreatedAt() {
+        return createdAt;
+    }
+
+    public void setCreatedAt(LocalDateTime createdAt) {
+        this.createdAt = createdAt;
     }
 }

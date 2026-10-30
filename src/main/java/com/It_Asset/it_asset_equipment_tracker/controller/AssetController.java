@@ -37,12 +37,18 @@ public class AssetController {
     @GetMapping
     public List<AssetResponse> getAllAssets(
             @RequestParam(required = false) AssetStatus status) {
+
+        if (status == null) {
+            return assetService.getAllAssets();
+        }
+
         return assetService.getAssetsByStatus(status);
     }
 
     // List assets assigned to the authenticated user.
     @GetMapping("/my-assets")
-    public List<AssetResponse> getMyAssets(Authentication authentication) {
+    public List<AssetResponse> getMyAssets(
+            Authentication authentication) {
         return assetService.getMyAssets(authentication.getName());
     }
 
@@ -69,7 +75,7 @@ public class AssetController {
     }
 
     // Return an assigned asset.
-    @GetMapping("/{id}/return")
+    @PatchMapping("/{id}/return")
     public AssetResponse returnAsset(@PathVariable Long id) {
         return assetService.returnAsset(id);
     }

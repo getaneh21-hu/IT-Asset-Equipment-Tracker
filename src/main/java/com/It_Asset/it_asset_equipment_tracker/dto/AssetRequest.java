@@ -2,6 +2,7 @@
 package com.It_Asset.it_asset_equipment_tracker.dto;
 
 import com.It_Asset.it_asset_equipment_tracker.entity.AssetStatus;
+import com.fasterxml.jackson.annotation.JsonProperty;
 import jakarta.validation.constraints.DecimalMin;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
@@ -58,7 +59,8 @@ public class AssetRequest {
     private String department;
 
     // ID of the category assigned to this asset
-    private Long categoryId;
+    @NotNull(message = "Asset category is required")
+     private Long categoryId;
 
     @NotNull(message = "Asset status is required")
     private AssetStatus status = AssetStatus.AVAILABLE;
@@ -81,7 +83,7 @@ public class AssetRequest {
     public AssetRequest() {
     }
 
-    // Name getter and setter
+    // Existing service compatibility
     public String getName() {
         return name1;
     }
@@ -90,7 +92,17 @@ public class AssetRequest {
         this.name1 = name;
     }
 
-    // Type getter and setter
+    // Explicit JSON property mapping for name1
+    @JsonProperty("name1")
+    public String getName1() {
+        return name1;
+    }
+
+    @JsonProperty("name1")
+    public void setName1(String name1) {
+        this.name1 = name1;
+    }
+
     public String getType() {
         return type;
     }
@@ -99,7 +111,6 @@ public class AssetRequest {
         this.type = type;
     }
 
-    // Serial number getter and setter
     public String getSerialNumber() {
         return serialNumber;
     }
@@ -108,7 +119,6 @@ public class AssetRequest {
         this.serialNumber = serialNumber;
     }
 
-    // Brand getter and setter
     public String getBrand() {
         return brand;
     }
@@ -117,7 +127,6 @@ public class AssetRequest {
         this.brand = brand;
     }
 
-    // Model getter and setter
     public String getModel() {
         return model;
     }
@@ -126,7 +135,6 @@ public class AssetRequest {
         this.model = model;
     }
 
-    // Department getter and setter
     public String getDepartment() {
         return department;
     }
@@ -135,7 +143,6 @@ public class AssetRequest {
         this.department = department;
     }
 
-    // Category ID getter and setter
     public Long getCategoryId() {
         return categoryId;
     }
@@ -144,7 +151,6 @@ public class AssetRequest {
         this.categoryId = categoryId;
     }
 
-    // Status getter and setter
     public AssetStatus getStatus() {
         return status;
     }
@@ -153,7 +159,6 @@ public class AssetRequest {
         this.status = status;
     }
 
-    // Purchase cost getter and setter
     public BigDecimal getPurchaseCost() {
         return purchaseCost;
     }
@@ -162,7 +167,6 @@ public class AssetRequest {
         this.purchaseCost = purchaseCost;
     }
 
-    // Purchase date getter and setter
     public LocalDate getPurchaseDate() {
         return purchaseDate;
     }
@@ -171,7 +175,6 @@ public class AssetRequest {
         this.purchaseDate = purchaseDate;
     }
 
-    // Warranty expiry date getter and setter
     public LocalDate getWarrantyExpiryDate() {
         return warrantyExpiryDate;
     }

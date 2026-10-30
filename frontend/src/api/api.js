@@ -94,3 +94,10 @@ export async function updateAssetStatus(id, status, token) {
     body: JSON.stringify({ status }),
   }, token);
 }
+// crete catagory
+export async function createCategory(name, token) {
+  return apiRequest('/categories', {
+    method: 'POST',
+    body: JSON.stringify({ name }),
+  }, token);
+}

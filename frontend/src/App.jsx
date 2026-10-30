@@ -7,6 +7,7 @@ import {
   getAssets,
   getCategories,
   createAsset,
+  createCategory,
   updateAsset,
   deleteAsset,
   assignAsset,
@@ -152,7 +153,12 @@ function App() {
       'Asset created successfully.'
     );
   }
-
+  async function handleCreateCategory(name) {
+  return performAssetAction(
+    () => createCategory(name, token),
+    'Category created successfully.'
+  );
+}
   async function handleUpdateAsset(id, asset) {
     return performAssetAction(
       () => updateAsset(id, asset, token),
@@ -223,6 +229,7 @@ function App() {
       dataLoading={dataLoading}
       message={message}
       onCreateAsset={handleCreateAsset}
+      onCreateCategory={handleCreateCategory}
       onUpdateAsset={handleUpdateAsset}
       onDeleteAsset={handleDeleteAsset}
       onAssignAsset={handleAssignAsset}

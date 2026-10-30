@@ -27,6 +27,7 @@ function DashboardPage({
   dataLoading,
   message,
   onCreateAsset,
+  onCreateCategory,
   onUpdateAsset,
   onDeleteAsset,
   onAssignAsset,
@@ -39,6 +40,11 @@ function DashboardPage({
   const [formError, setFormError] = React.useState('');
   const [saving, setSaving] = React.useState(false);
   const [showForm, setShowForm] = React.useState(false);
+
+  // Category form state
+  const [categoryName, setCategoryName] = React.useState('');
+  const [categorySaving, setCategorySaving] = React.useState(false);
+  const [categoryError, setCategoryError] = React.useState('');
 
   const availableCount = assets.filter(
     (asset) => String(asset.status ?? '').toUpperCase() === 'AVAILABLE'
@@ -54,6 +60,7 @@ function DashboardPage({
 
   const filteredAssets = assets.filter((asset) => {
     const assetStatus = String(asset.status ?? '').toUpperCase();
+
     const matchesStatus =
       statusFilter === 'ALL' || assetStatus === statusFilter;
 
@@ -78,9 +85,11 @@ function DashboardPage({
           assetCategoryName === String(selectedCategory.name).toLowerCase()));
 
     const name = String(asset.name ?? asset.name1 ?? '').toLowerCase();
+
     const serialNumber = String(
       asset.serialNumber ?? asset.serial_number ?? ''
     ).toLowerCase();
+
     const search = (searchTerm ?? '').trim().toLowerCase();
 
     return (
@@ -99,6 +108,7 @@ function DashboardPage({
 
   function startEdit(asset) {
     setEditingId(asset.id);
+
     setForm({
       name1: asset.name ?? asset.name1 ?? '',
       type: asset.type ?? '',
@@ -117,6 +127,7 @@ function DashboardPage({
         asset.warrantyExpiryDate ?? asset.warranty_expiry_date ?? ''
       ).slice(0, 10),
     });
+
     setFormError('');
     setShowForm(true);
   }
@@ -133,25 +144,57 @@ function DashboardPage({
     setForm((current) => ({ ...current, [name]: value }));
   }
 
+  // Create category
+  async function handleCreateCategorySubmit(event) {
+    event.preventDefault();
+    setCategoryError('');
+
+    const name = categoryName.trim();
+
+    if (!name) {
+      setCategoryError('Please enter a category name.');
+      return;
+    }
+
+    setCategorySaving(true);
+
+    try {
+      const success = await onCreateCategory(name);
+
+      if (success) {
+        setCategoryName('');
+      }
+    } catch (error) {
+      setCategoryError(
+        error.message || 'Could not create category.'
+      );
+    } finally {
+      setCategorySaving(false);
+    }
+  }
+
   async function handleSubmit(event) {
     event.preventDefault();
     setFormError('');
-//
-    if (
-  !form.name1.trim() ||
-  !form.type.trim() ||
-  !form.serialNumber.trim() ||
-  !form.categoryId ||
-  form.purchaseCost === '' ||
-  !form.purchaseDate
-) {
-  setFormError(
-    'Please complete the asset name, type, serial number, category, purchase cost, and purchase date.'
-  );
-  return;
-}
 
-    if (Number(form.purchaseCost) < 0 || !Number.isFinite(Number(form.purchaseCost))) {
+    if (
+      !form.name1.trim() ||
+      !form.type.trim() ||
+      !form.serialNumber.trim() ||
+      !form.categoryId ||
+      form.purchaseCost === '' ||
+      !form.purchaseDate
+    ) {
+      setFormError(
+        'Please complete the asset name, type, serial number, category, purchase cost, and purchase date.'
+      );
+      return;
+    }
+
+    if (
+      Number(form.purchaseCost) < 0 ||
+      !Number.isFinite(Number(form.purchaseCost))
+    ) {
       setFormError('Purchase cost must be a valid non-negative number.');
       return;
     }
@@ -227,7 +270,10 @@ function DashboardPage({
           <h1>IT Asset Tracker</h1>
           <p>Equipment overview</p>
         </div>
-        <button type="button" onClick={onLogout}>Log Out</button>
+
+        <button type="button" onClick={onLogout}>
+          Log Out
+        </button>
       </header>
 
       {message && <p role="alert">{message}</p>}
@@ -237,18 +283,22 @@ function DashboardPage({
           <h2>Total Assets</h2>
           <p>{assets.length}</p>
         </article>
+
         <article className="summary-card">
           <h2>Categories</h2>
           <p>{categories.length}</p>
         </article>
+
         <article className="summary-card">
           <h2>Available</h2>
           <p>{availableCount}</p>
         </article>
+
         <article className="summary-card">
           <h2>Assigned</h2>
           <p>{assignedCount}</p>
         </article>
+
         <article className="summary-card">
           <h2>Maintenance</h2>
           <p>{maintenanceCount}</p>
@@ -257,6 +307,27 @@ function DashboardPage({
 
       <section className="dashboard-section">
         <h2>Categories</h2>
+
+        <form onSubmit={handleCreateCategorySubmit}>
+          <label>
+            New Category Name
+            <input
+              type="text"
+              value={categoryName}
+              onChange={(event) => setCategoryName(event.target.value)}
+              placeholder="e.g. Printers"
+              maxLength={100}
+              required
+            />
+          </label>
+
+          <button type="submit" disabled={categorySaving}>
+            {categorySaving ? 'Creating...' : '+ Add Category'}
+          </button>
+
+          {categoryError && <p role="alert">{categoryError}</p>}
+        </form>
+
         {dataLoading ? (
           <p>Loading categories...</p>
         ) : categories.length === 0 ? (
@@ -274,7 +345,7 @@ function DashboardPage({
         <h2>Assets</h2>
 
         <button type="button" onClick={startCreate}>
-          + Add Asset
+          + Add Assets
         </button>
 
         {showForm && (
@@ -356,6 +427,7 @@ function DashboardPage({
                 onChange={handleFieldChange}
               >
                 <option value="">No category</option>
+
                 {categories.map((category) => (
                   <option key={category.id} value={String(category.id)}>
                     {category.name}
@@ -406,7 +478,12 @@ function DashboardPage({
                     ? 'Save Changes'
                     : 'Create Asset'}
               </button>
-              <button type="button" onClick={cancelForm} disabled={saving}>
+
+              <button
+                type="button"
+                onClick={cancelForm}
+                disabled={saving}
+              >
                 Cancel
               </button>
             </div>
@@ -419,7 +496,7 @@ function DashboardPage({
             name="assetSearch"
             type="search"
             aria-label="Search assets"
-            placeholder="Search by name or serial number..."
+            placeholder="Search by name ,serial number,category..."
             value={searchTerm}
             onChange={(event) => setSearchTerm(event.target.value)}
           />
@@ -445,6 +522,7 @@ function DashboardPage({
             onChange={(event) => setCategoryFilter(event.target.value)}
           >
             <option value="ALL">All Categories</option>
+
             {categories.map((category) => (
               <option key={category.id} value={String(category.id)}>
                 {category.name}
@@ -472,6 +550,7 @@ function DashboardPage({
                   <th>Actions</th>
                 </tr>
               </thead>
+
               <tbody>
                 {filteredAssets.map((asset) => {
                   const status = String(asset.status ?? '').toUpperCase();
@@ -557,7 +636,7 @@ function DashboardPage({
       </section>
 
       <button
-        type="Button"
+        type="button"
         onClick={onRefresh}
         disabled={dataLoading}
       >

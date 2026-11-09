@@ -152,17 +152,22 @@ public class SecurityConfig {
             )
 
             .authorizeHttpRequests(auth -> auth
-
                 // Public endpoints.
                 .requestMatchers(
                     "/",
-                    "/api/health",
-                    "/api/auth/**",
+                "/api/health",
+                    "/api/auth/login",
                     "/swagger-ui/**",
-                    "/swagger-ui.html",
-                    "/v3/api-docs/**"
-                ).permitAll()
+                "/swagger-ui.html",
+            "/v3/api-docs/**"
+            ).permitAll()
 
+            // Only ADMIN can register new accounts.
+            .requestMatchers(HttpMethod.POST, "/api/auth/register")
+                .hasRole("ADMIN")
+                // Only ADMIN can manage users.
+                .requestMatchers("/api/users/**")
+                .hasRole("ADMIN")
                 // Category endpoints.
                 .requestMatchers(HttpMethod.GET, "/api/categories")
                     .hasAnyRole("ADMIN", "STAFF")

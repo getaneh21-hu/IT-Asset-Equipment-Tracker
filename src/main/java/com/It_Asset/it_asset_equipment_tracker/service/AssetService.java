@@ -26,14 +26,22 @@ public class AssetService {
     private final AssetRepository assetRepository;
     private final CategoryRepository categoryRepository;
     private final UserRepository userRepository;
+    private final AssetHistoryService assetHistoryService;
+    private final NotificationService notificationService;
 
     public AssetService(
             AssetRepository assetRepository,
             CategoryRepository categoryRepository,
-            UserRepository userRepository) {
+            UserRepository userRepository,
+            AssetHistoryService assetHistoryService,
+            NotificationService notificationService)
+
+            {
         this.assetRepository = assetRepository;
         this.categoryRepository = categoryRepository;
         this.userRepository = userRepository;
+        this.assetHistoryService = assetHistoryService;
+        this.notificationService = notificationService;
     }
 
     private AssetResponse toResponse(Asset asset) {
@@ -46,6 +54,9 @@ public class AssetService {
         response.setModel(asset.getModel());
         response.setSerialNumber(asset.getSerialNumber());
         response.setAssignedToName(asset.getAssignedToName());
+        if (asset.getAssignedTo() != null) {
+    response.setAssignedUserId(asset.getAssignedTo().getId());
+}
         response.setDepartment(asset.getDepartment());
 
         if (asset.getCategory() != null) {
@@ -79,20 +90,23 @@ public class AssetService {
 
         return asset;
     }
+    //
 
-    private Category getCategory(Long categoryId) {
-        if (categoryId == null) {
-            return null;
-        }
+ private Category getCategory(Long categoryId) {
+    if (categoryId == null) {
+        return null;
+ }
 
-        return categoryRepository.findById(categoryId)
-                .orElseThrow(() -> new ResourceNotFoundException(
-                        "Category not found with id: " + categoryId));
-    }
+      Long requiredCategoryId = java.util.Objects.requireNonNull(categoryId);
 
+        return categoryRepository.findById(requiredCategoryId)
+            .orElseThrow(() -> new ResourceNotFoundException(
+                    "Category not found with id: " + requiredCategoryId));
+}
     private void validateAssetDates(AssetRequest request) {
         LocalDate purchaseDate = request.getPurchaseDate();
         LocalDate warrantyExpiryDate = request.getWarrantyExpiryDate();
+
 
         if (purchaseDate != null
                 && warrantyExpiryDate != null
@@ -141,12 +155,28 @@ public class AssetService {
 
         asset.setAssignedTo(null);
         asset.setAssignedToName(null);
-
+        
         Asset savedAsset = assetRepository.save(asset);
 
-        return toResponse(savedAsset);
-    }
+// Record asset creation history
+assetHistoryService.record(
+        savedAsset,
+        "CREATED",
+        "Asset was created and added to inventory."
+);
 
+// Create notification
+notificationService.createNotification(
+        "New Asset Created",
+        "A new " + savedAsset.getName()
+                + " asset has been added to inventory. Serial number: "
+                + savedAsset.getSerialNumber(),
+        "ASSET_CREATED"
+);
+
+return toResponse(savedAsset);
+    }
+        
     @Transactional(readOnly = true)
     public List<AssetResponse> getAllAssets() {
         return assetRepository.findAll()
@@ -212,10 +242,18 @@ public class AssetService {
         }
 
         // Preserve the current assignment and status during an ordinary update.
+
+        // Preserve the current assignment and status during an ordinary update.
         Asset savedAsset = assetRepository.save(existingAsset);
 
+        assetHistoryService.record(
+        savedAsset,
+        "UPDATED",
+        "Asset details were updated."
+        );
+
         return toResponse(savedAsset);
-    }
+                }
 
     public AssetResponse assignAsset(Long assetId, Long userId) {
         Asset asset = assetRepository.findById(assetId)
@@ -236,8 +274,20 @@ public class AssetService {
         asset.setStatus(AssetStatus.ASSIGNED);
 
         Asset savedAsset = assetRepository.save(asset);
+        notificationService.createNotification(
+        "Asset Assigned",
+        "Asset '" + savedAsset.getName()
+                + "' was assigned to " + user.getUsername() + ".",
+        "ASSET_ASSIGNED"
+);
 
-        return toResponse(savedAsset);
+        assetHistoryService.record(
+        savedAsset,
+        "ASSIGNED",
+        "Asset was assigned to " + user.getUsername() + "."
+    );
+
+return toResponse(savedAsset);
     }
 
     public AssetResponse returnAsset(Long assetId) {
@@ -255,6 +305,12 @@ public class AssetService {
         asset.setStatus(AssetStatus.AVAILABLE);
 
         Asset savedAsset = assetRepository.save(asset);
+
+        assetHistoryService.record(
+                savedAsset,
+                "RETURNED",
+                "Asset was returned."
+        );
 
         return toResponse(savedAsset);
     }
@@ -279,21 +335,59 @@ public class AssetService {
             throw new BadRequestException(
                     "Return the asset before changing its status");
         }
+        AssetStatus oldStatus = asset.getStatus();
 
         asset.setStatus(newStatus);
         asset.setAssignedTo(null);
         asset.setAssignedToName(null);
 
+
         Asset savedAsset = assetRepository.save(asset);
 
-        return toResponse(savedAsset);
-    }
+// Record asset history
+assetHistoryService.record(
+        savedAsset,
+        "STATUS_UPDATED",
+        "Asset status was updated from " + oldStatus
+                + " to " + newStatus + "."
+);
 
+// Create notification
+notificationService.createNotification(
+        "Asset Status Updated",
+        "Asset '" + savedAsset.getName()
+                + "' status changed from " + oldStatus
+                + " to " + newStatus + ".",
+        "ASSET_STATUS_UPDATED"
+);
+
+return toResponse(savedAsset);
+
+
+    }
+    // Delete asset and record history
     public void deleteAsset(Long id) {
-        Asset asset = assetRepository.findById(id)
-                .orElseThrow(() -> new ResourceNotFoundException(
-                        "Asset not found with id: " + id));
+    Asset asset = assetRepository.findById(id)
+            .orElseThrow(() -> new ResourceNotFoundException(
+                    "Asset not found with id: " + id));
 
-        assetRepository.delete(asset);
-    }
+    // Record asset history
+    assetHistoryService.record(
+            asset,
+            "DELETED",
+            "Asset was deleted from the inventory."
+    );
+
+    // Create notification
+    notificationService.createNotification(
+            "Asset Deleted",
+            "Asset '" + asset.getName()
+                    + "' was deleted from the inventory. Serial number: "
+                    + asset.getSerialNumber(),
+            "ASSET_DELETED"
+    );
+
+    // Delete asset
+    assetRepository.delete(asset);
+}
 }

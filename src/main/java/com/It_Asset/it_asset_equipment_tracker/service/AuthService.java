@@ -7,6 +7,7 @@ import com.It_Asset.it_asset_equipment_tracker.dto.RegisterRequest;
 import com.It_Asset.it_asset_equipment_tracker.entity.User;
 import com.It_Asset.it_asset_equipment_tracker.enums.Role;
 import com.It_Asset.it_asset_equipment_tracker.repository.UserRepository;
+
 import org.springframework.http.HttpStatus;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
@@ -27,6 +28,7 @@ public class AuthService {
             PasswordEncoder passwordEncoder,
             AuthenticationManager authenticationManager,
             JwtService jwtService) {
+
         this.userRepository = userRepository;
         this.passwordEncoder = passwordEncoder;
         this.authenticationManager = authenticationManager;
@@ -38,7 +40,8 @@ public class AuthService {
         if (userRepository.existsByUsername(request.getUsername())) {
             throw new ResponseStatusException(
                     HttpStatus.CONFLICT,
-                    "Username is already registered");
+                    "Username is already registered"
+            );
         }
 
         User user = new User(
@@ -51,7 +54,11 @@ public class AuthService {
 
         String token = jwtService.generateToken(user.getUsername());
 
-        return new AuthResponse(token, user.getUsername());
+        return new AuthResponse(
+                token,
+                user.getUsername(),
+                user.getRole().name()
+        );
     }
 
     public AuthResponse login(LoginRequest request) {
@@ -63,8 +70,21 @@ public class AuthService {
                 )
         );
 
-        String token = jwtService.generateToken(request.getUsername());
+        User user = userRepository.findByUsername(request.getUsername())
+                .orElseThrow(() ->
+                        new IllegalArgumentException("User not found")
+                );
 
-        return new AuthResponse(token, request.getUsername());
+        // Display the role stored for this user
+        System.out.println("LOGIN USER ROLE: " + user.getRole());
+
+        String token = jwtService.generateToken(user.getUsername());
+
+        return new AuthResponse(
+                token,
+                user.getUsername(),
+                user.getRole().name()
+        );
     }
 }
+

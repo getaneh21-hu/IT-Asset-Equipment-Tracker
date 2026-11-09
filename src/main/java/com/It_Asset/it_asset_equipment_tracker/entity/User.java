@@ -26,6 +26,9 @@ public class User {
     @Enumerated(EnumType.STRING)
     @Column(nullable = false)
     private Role role = Role.ROLE_STAFF;
+    // Account activation status. Existing accounts remain active.
+        @Column(nullable = false, columnDefinition = "boolean default true")
+        private boolean enabled = true;
 
     public User() {
     }
@@ -66,5 +69,13 @@ public class User {
 
     public void setRole(Role role) {
         this.role = role;
+        
     }
+    public boolean isEnabled() {
+    return enabled;
+}
+
+public void setEnabled(boolean enabled) {
+    this.enabled = enabled;
+}
 }

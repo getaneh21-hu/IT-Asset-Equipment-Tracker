@@ -33,6 +33,10 @@ class AssetServiceTest {
 
     @Mock
     private UserRepository userRepository;
+    @Mock
+    private AssetHistoryService assetHistoryService;
+    @Mock
+    private NotificationService notificationService;
 
     @Mock
     private CategoryRepository categoryRepository;

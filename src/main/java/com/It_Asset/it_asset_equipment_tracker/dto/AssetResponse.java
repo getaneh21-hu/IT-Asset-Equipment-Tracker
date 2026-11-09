@@ -16,6 +16,7 @@ public class AssetResponse {
     private String model;
     private String serialNumber;
     private String assignedToName;
+    private Long assignedUserId;
     private String department;
 
     // Category information
@@ -84,6 +85,13 @@ public class AssetResponse {
     public String getAssignedToName() {
         return assignedToName;
     }
+    public Long getAssignedUserId() {
+    return assignedUserId;
+}
+
+public void setAssignedUserId(Long assignedUserId) {
+    this.assignedUserId = assignedUserId;
+}
 
     public void setAssignedToName(String assignedToName) {
         this.assignedToName = assignedToName;
